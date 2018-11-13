@@ -60,6 +60,8 @@
             this.label_Ignore = new System.Windows.Forms.Label();
             this.button_CheckRealSize = new System.Windows.Forms.Button();
             this.checkBox_Ignore = new System.Windows.Forms.CheckBox();
+            this.label_CurrentSpeed = new System.Windows.Forms.Label();
+            this.label_AverageSpeed = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // textBox_Data
@@ -222,7 +224,7 @@
             // label_PaddingPattern
             // 
             this.label_PaddingPattern.AutoSize = true;
-            this.label_PaddingPattern.Location = new System.Drawing.Point(51, 134);
+            this.label_PaddingPattern.Location = new System.Drawing.Point(67, 134);
             this.label_PaddingPattern.Name = "label_PaddingPattern";
             this.label_PaddingPattern.Size = new System.Drawing.Size(53, 12);
             this.label_PaddingPattern.TabIndex = 31;
@@ -230,9 +232,9 @@
             // 
             // textBox_PaddingPattern
             // 
-            this.textBox_PaddingPattern.Location = new System.Drawing.Point(105, 131);
+            this.textBox_PaddingPattern.Location = new System.Drawing.Point(120, 131);
             this.textBox_PaddingPattern.Name = "textBox_PaddingPattern";
-            this.textBox_PaddingPattern.Size = new System.Drawing.Size(48, 21);
+            this.textBox_PaddingPattern.Size = new System.Drawing.Size(33, 21);
             this.textBox_PaddingPattern.TabIndex = 30;
             this.textBox_PaddingPattern.Text = "0";
             this.textBox_PaddingPattern.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -269,7 +271,7 @@
             // label_SetLBA
             // 
             this.label_SetLBA.AutoSize = true;
-            this.label_SetLBA.Location = new System.Drawing.Point(51, 165);
+            this.label_SetLBA.Location = new System.Drawing.Point(71, 165);
             this.label_SetLBA.Name = "label_SetLBA";
             this.label_SetLBA.Size = new System.Drawing.Size(29, 12);
             this.label_SetLBA.TabIndex = 42;
@@ -286,9 +288,9 @@
             // 
             // textBox_lba
             // 
-            this.textBox_lba.Location = new System.Drawing.Point(86, 162);
+            this.textBox_lba.Location = new System.Drawing.Point(100, 162);
             this.textBox_lba.Name = "textBox_lba";
-            this.textBox_lba.Size = new System.Drawing.Size(67, 21);
+            this.textBox_lba.Size = new System.Drawing.Size(53, 21);
             this.textBox_lba.TabIndex = 40;
             this.textBox_lba.Text = "0";
             this.textBox_lba.TextAlign = System.Windows.Forms.HorizontalAlignment.Right;
@@ -350,11 +352,31 @@
             this.checkBox_Ignore.Text = "Ignore Zero";
             this.checkBox_Ignore.UseVisualStyleBackColor = true;
             // 
+            // label_CurrentSpeed
+            // 
+            this.label_CurrentSpeed.AutoSize = true;
+            this.label_CurrentSpeed.Location = new System.Drawing.Point(120, 296);
+            this.label_CurrentSpeed.Name = "label_CurrentSpeed";
+            this.label_CurrentSpeed.Size = new System.Drawing.Size(53, 12);
+            this.label_CurrentSpeed.TabIndex = 50;
+            this.label_CurrentSpeed.Text = "Current:";
+            // 
+            // label_AverageSpeed
+            // 
+            this.label_AverageSpeed.AutoSize = true;
+            this.label_AverageSpeed.Location = new System.Drawing.Point(120, 311);
+            this.label_AverageSpeed.Name = "label_AverageSpeed";
+            this.label_AverageSpeed.Size = new System.Drawing.Size(53, 12);
+            this.label_AverageSpeed.TabIndex = 51;
+            this.label_AverageSpeed.Text = "Average:";
+            // 
             // Form_KDisk
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(373, 299);
+            this.ClientSize = new System.Drawing.Size(373, 326);
+            this.Controls.Add(this.label_AverageSpeed);
+            this.Controls.Add(this.label_CurrentSpeed);
             this.Controls.Add(this.checkBox_Ignore);
             this.Controls.Add(this.button_CheckRealSize);
             this.Controls.Add(this.textBox_Ignore);
@@ -391,6 +413,7 @@
             this.MaximizeBox = false;
             this.Name = "Form_KDisk";
             this.Text = "KDisk";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form_KDisk_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
@@ -430,6 +453,8 @@
 		private System.Windows.Forms.Label label_Ignore;
 		private System.Windows.Forms.Button button_CheckRealSize;
 		private System.Windows.Forms.CheckBox checkBox_Ignore;
+        private System.Windows.Forms.Label label_CurrentSpeed;
+        private System.Windows.Forms.Label label_AverageSpeed;
     }
 }
 

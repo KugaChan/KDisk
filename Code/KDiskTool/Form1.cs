@@ -18,7 +18,7 @@ namespace KDiskTool
     public partial class Form_KDisk : Form
     {
         //常量
-        private const int _VersionGit = 1;
+        private const int _VersionGit = 2;
 
         public Form_KDisk()
         {
@@ -35,7 +35,7 @@ namespace KDiskTool
 				{
 					comboBox_Disk.Items.Add(mydisk.Properties["Name"].Value.ToString());
 
-					Console.WriteLine("n:{0} s:{1}", mydisk.ToString(), mydisk.Properties["TracksPerCylinder"].Value.ToString());
+                    Console.WriteLine("n:{0} s:{1}", mydisk.ToString(), mydisk.Properties["Name"].Value.ToString());
 				}
 
 				mydisks.Dispose();
@@ -224,7 +224,7 @@ namespace KDiskTool
 
             //BEThread.Abort("退出");     //结束线程
             BEThread.IsBackground = true;//设置为后台程序，它的主线程结束，它也一起结束                                       
-            BEThread.Start();                                               //启动线程 
+            BEThread.Start();                                               //启动线程
             /**********************创建线程****************************/
         }
 		public string ShowString(byte[] SectorBytes)
@@ -285,7 +285,9 @@ namespace KDiskTool
 				return;
 			}
 
-			if(data_buffer.Length == 0)
+            if( (data_buffer == null) || 
+                (data_buffer.Length != Convert.ToInt32(textBox_PaddingLength.Text.Trim()))
+               )
 			{
 				MessageBox.Show("Please fullfill the data buffer before write", "Warning!");
 				return;
@@ -304,8 +306,12 @@ namespace KDiskTool
 
 		private void button_fullfill_Click(object sender, EventArgs e)
 		{
-			int length = Convert.ToInt32(textBox_PaddingLength.Text);
-			byte pattern = Convert.ToByte(textBox_PaddingPattern.Text);
+            int length;
+            byte pattern;
+
+            // 读取文件
+            length = Convert.ToInt32(textBox_PaddingLength.Text.Trim());
+            pattern = Convert.ToByte(textBox_PaddingPattern.Text.Trim());
 
 			byte[] SectorBytes = new byte[length];
 
@@ -368,5 +374,13 @@ namespace KDiskTool
 
 			T.Close();
 		}
+
+        private void Form_KDisk_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if(BEThread != null)
+            {
+                BEThread.Abort("退出");     //结束线程
+            }
+        }
     }
 }

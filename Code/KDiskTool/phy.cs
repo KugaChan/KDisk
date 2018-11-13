@@ -18,7 +18,7 @@ namespace KDiskTool
         byte[] ReturnByte = new byte[dma_buff_length];
         long img_total_length;
         BinaryReader br;
-        Thread BEThread;
+        Thread BEThread = null;
         string fileName = null; //文件名
 
         bool console_show_progress = false;
@@ -47,11 +47,21 @@ namespace KDiskTool
 			System.DateTime start_time = new System.DateTime();
 			start_time = System.DateTime.Now;
 
+            int last_time;
+            long last_loaded_size = 0;
+            float speed_sum = 0;
+            int speed_cnt = 0;
+
 			long lba = 0;
             int read_cnt = 0;
             long loaded_data_size = 0;
             long ignore_data_size = 0;
 			bool always_write_to_disk;
+
+            System.DateTime currentTime = new System.DateTime();            
+            
+            currentTime = System.DateTime.Now;
+            last_time = currentTime.Second;
 
 			always_write_to_disk = true;
 			if(checkBox_Ignore.Checked == true)
@@ -131,8 +141,40 @@ namespace KDiskTool
                     if(need_write_disk == false)
                     {
                         textBox_Ignore.Text = ignore_data_size.ToString() + ":" + img_total_length.ToString() +
-                            "(" + percent_ignore.ToString() + "%)";                   
+                            "(" + percent_ignore.ToString() + "%)";
                     }
+
+
+                    int delta_second = 0;
+                    long delta_size = 0;
+                    float speed;
+
+                    currentTime = System.DateTime.Now;
+                    if(currentTime.Second > last_time)
+                    {
+                        delta_second = currentTime.Second - last_time;
+                    }
+                    if(currentTime.Second < last_time)
+                    {
+                        delta_second = currentTime.Second + 60 - last_time;
+                    }
+
+                    //Console.WriteLine("C:{0} L:{1}", currentTime.Second, last_time);
+
+                    if(delta_second != 0)
+                    {
+                        delta_size = loaded_data_size - last_loaded_size;
+                        speed = (float)delta_size / (float)delta_second;//Byte/s
+                        speed = speed / 1024 / 1024;                    //MB/s
+                        label_CurrentSpeed.Text = "Current: " + ((long)speed).ToString() + "MB/s";
+
+                        speed_cnt++;
+                        speed_sum += speed;
+                        label_AverageSpeed.Text = "Average: " + ((long)(speed_sum / speed_cnt)).ToString() + "MB/s";                        
+
+                        last_time = currentTime.Second;                        
+                        last_loaded_size = loaded_data_size;                        
+                    }                    
                 }));
 
                 if(console_show_progress == true)
