@@ -14,227 +14,137 @@ namespace KDiskTool
 {
     public partial class Form_KDisk
     {
-        const int dma_buff_length = 1024 * 1024;
-        byte[] ReturnByte = new byte[dma_buff_length];
-        long img_total_length;
+		long fifo_top = 0;
+		long fifo_bottom = 0;
+        long fifo_top_cnt;
+        long fifo_bottom_cnt;
+		const int fifo_max = 32;
+        const int dma_buffer_length = 1024 * 1024;
+		byte[][] fifo_buffer = new byte[fifo_max][];
+		bool read_is_end = false;
+
         BinaryReader br;
-        Thread BEThread = null;
-        string fileName = null; //文件名
+        Thread Thread_Read = null;
+		Thread Thread_Write = null;
 
-        bool console_show_progress = false;
+        long ignore_data_size;
+		long loaded_data_size;
 
-        public void BEThreadEntry()                                         //线程入口
-        {
-			DialogResult result = DialogResult.Cancel;
+		public void Thread_Write_Entry()
+		{
+            ignore_data_size = 0;
+            long written_data_size = 0;
 
-			this.Invoke((EventHandler)(delegate
-			{
-				result = MessageBox.Show("start copy from [" + textBox_ImgPath.Text +
-				"] to [" + comboBox_Disk.SelectedItem.ToString() + "] ?", "Start Copy?",
-				 MessageBoxButtons.OKCancel, MessageBoxIcon.Question);	
-			}));
-			
-			if(result == DialogResult.OK)
-			{
-				//确定按钮的方法
-			}
-			else
-			{
-				br.Close();
-				return;//取消按钮的方法
-			}
-
-			System.DateTime start_time = new System.DateTime();
-			start_time = System.DateTime.Now;
-
-            int last_time;
-            long last_loaded_size = 0;
-            float speed_sum = 0;
-            int speed_cnt = 0;
-
-			long lba = 0;
-            int read_cnt = 0;
-            long loaded_data_size = 0;
-            long ignore_data_size = 0;
 			bool always_write_to_disk;
-
-            System.DateTime currentTime = new System.DateTime();            
-            
-            currentTime = System.DateTime.Now;
-            last_time = currentTime.Second;
-
 			always_write_to_disk = true;
 			if(checkBox_Ignore.Checked == true)
 			{
 				always_write_to_disk = false;
-
-                DialogResult res1 = DialogResult.Cancel;
-                res1 = MessageBox.Show("Write to the disk without zero data", "Warning!",
-                     MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
-                if(res1 != DialogResult.OK)
-                {
-                    return;
-                }
 			}
+
+			while(true)
+			{
+				if(fifo_top > fifo_bottom)
+				{
+                    fifo_bottom_cnt = fifo_bottom % fifo_max;
+
+					long delta_size = loaded_data_size - written_data_size;
+					if(delta_size > dma_buffer_length)	//限定一次只能写入的数据量
+					{
+						delta_size = dma_buffer_length;
+					}
+
+					long written_lba = written_data_size / 512;
+					written_data_size += delta_size;
+					int sector_count = (int)(delta_size) / 512;
+					//Console.WriteLine("LBA:{0} Cnt:{1}", written_lba, sector_count);
+
+					/**********************计算是否写入START*********************/
+                    bool need_write_disk = false;
+					if(always_write_to_disk == true)
+					{
+						need_write_disk = true;
+					}
+					else
+					{
+                        for(int v = 0; v < fifo_buffer[fifo_bottom_cnt].Length; v++)
+						{
+                            if(fifo_buffer[fifo_bottom_cnt][v] != 0)
+							{
+								need_write_disk = true;
+								break;
+							}
+						}
+					}
+
+					if(need_write_disk == true)
+					{
+                        T.WritSector(fifo_buffer[fifo_bottom_cnt], written_lba, sector_count);//把数据写到disk上
+					}
+					else
+					{
+                        ignore_data_size += fifo_buffer[fifo_bottom_cnt].Length;
+					}
+
+					fifo_bottom++;
+					/**********************计算是否写入END***********************/
+				}
+
+				if(read_is_end == true)
+				{
+					break;
+				}
+			}
+
+            timer1.Enabled = false;
+            last_loaded_size = 0;
+            speed_sum = 0;
+            speed_cnt = 0;
+
+            T.Close();
+
+			Thread_Write.Abort("退出");
+		}
+
+        public void Thread_Read_Entry()                                         //线程入口
+        {
+            loaded_data_size = 0;            
+
+            long read_out_size;
+
+			System.DateTime start_time = new System.DateTime();
+			start_time = System.DateTime.Now;
+
+            timer1.Enabled = true;
 
             while(true)
             {
-				//从文件中读取出来
-                ReturnByte = br.ReadBytes(dma_buff_length);
-                if(ReturnByte.Length == 0)
+				if(fifo_top - fifo_bottom >= fifo_max)
+				{
+					//Console.WriteLine("FIFO is full {0}:{1}", fifo_top, fifo_bottom);
+					continue;
+				}
+				/**********************从文件中读取START*********************/
+                fifo_top_cnt = fifo_top % fifo_max;
+                fifo_buffer[fifo_top_cnt] = br.ReadBytes(dma_buffer_length);
+                read_out_size = fifo_buffer[fifo_top_cnt].Length;
+                if(read_out_size == 0)
                 {
                     break;
                 }
+                loaded_data_size += read_out_size;
 
-                loaded_data_size += ReturnByte.Length;
-
-				int sector_count = ReturnByte.Length / 512;
-				if(ReturnByte.Length % 512 != 0)
+                if(read_out_size % 512 != 0)							    //校验读取的数据是否正常
 				{
-					MessageBox.Show("Data size error:{0}" + ReturnByte.Length.ToString(),
+                    MessageBox.Show("Data size error:{0}" + read_out_size.ToString(),
 						"Warning!", MessageBoxButtons.OK);
 				}
 
-				Console.WriteLine("LBA:{0} Cnt:{1}", lba, sector_count);
-
-				if(T == null)
-				{
-					MessageBox.Show("Data size error:{0}" + ReturnByte.Length.ToString(),
-						"Warning!", MessageBoxButtons.OK);				
-				}
-
-				bool need_write_disk = false;
-				if(always_write_to_disk == true)
-				{
-					need_write_disk = true;
-				}
-                else
-				{
-					for(int v = 0; v < ReturnByte.Length; v++)
-					{
-						if(ReturnByte[v] != 0)
-						{
-							need_write_disk = true;
-							break;
-						}
-					}				
-				}
-
-                if(need_write_disk == true)
-                {
-                    T.WritSector(ReturnByte, lba, sector_count);//把数据写到disk上
-                }
-                else
-                {
-                    ignore_data_size += ReturnByte.Length;
-                }
-
-				lba = loaded_data_size / 512;
-
-                long percent_all = loaded_data_size * 100 / img_total_length;
-                long percent_ignore = ignore_data_size * 100 / img_total_length;
-                this.Invoke((EventHandler)(delegate
-                {
-					textBox_Progress.Text = loaded_data_size.ToString() + ":" + img_total_length.ToString() +
-                        "(" + percent_all.ToString() + "%)";
-
-                    if(need_write_disk == false)
-                    {
-                        textBox_Ignore.Text = ignore_data_size.ToString() + ":" + img_total_length.ToString() +
-                            "(" + percent_ignore.ToString() + "%)";
-                    }
-
-
-                    int delta_second = 0;
-                    long delta_size = 0;
-                    float speed;
-
-                    currentTime = System.DateTime.Now;
-                    if(currentTime.Second > last_time)
-                    {
-                        delta_second = currentTime.Second - last_time;
-                    }
-                    if(currentTime.Second < last_time)
-                    {
-                        delta_second = currentTime.Second + 60 - last_time;
-                    }
-
-                    //Console.WriteLine("C:{0} L:{1}", currentTime.Second, last_time);
-
-                    if(delta_second != 0)
-                    {
-                        delta_size = loaded_data_size - last_loaded_size;
-                        speed = (float)delta_size / (float)delta_second;//Byte/s
-                        speed = speed / 1024 / 1024;                    //MB/s
-                        label_CurrentSpeed.Text = "Current: " + ((long)speed).ToString() + "MB/s";
-
-                        speed_cnt++;
-                        speed_sum += speed;
-                        label_AverageSpeed.Text = "Average: " + ((long)(speed_sum / speed_cnt)).ToString() + "MB/s";                        
-
-                        last_time = currentTime.Second;                        
-                        last_loaded_size = loaded_data_size;                        
-                    }                    
-                }));
-
-                if(console_show_progress == true)
-                {
-                    long data_size_show_B = 0;
-                    long data_size_show_KB = 0;
-                    long data_size_show_MB = 0;
-                    long data_size_show_GB = 0;
-                    long data_size_left = 0;
-
-                    long KB = 1024L;
-                    long MB = 1024L * 1024L;
-                    long GB = 1024L * 1024L * 1024L;
-                    long TB = 1024L * 1024L * 1024L * 1024L;
-
-                    data_size_left = loaded_data_size;
-                    if(loaded_data_size < KB)
-                    {
-                        data_size_show_B = loaded_data_size;
-                    }
-                    else if(loaded_data_size < MB)
-                    {
-                        data_size_show_KB = data_size_left / KB;
-                        data_size_left = data_size_left - data_size_show_KB * KB;
-
-                        data_size_show_B = data_size_left;
-                    }
-                    else if(loaded_data_size < GB)
-                    {
-                        data_size_show_MB = data_size_left / MB;
-                        data_size_left = data_size_left - data_size_show_MB * MB;
-
-                        data_size_show_KB = data_size_left / KB;
-                        data_size_left = data_size_left - data_size_show_KB * KB;
-
-                        data_size_show_B = data_size_left;
-                    }
-                    else if(loaded_data_size < TB)
-                    {
-                        data_size_show_GB = data_size_left / GB;
-                        data_size_left = data_size_left - data_size_show_GB * GB;
-
-                        data_size_show_MB = data_size_left / MB;
-                        data_size_left = data_size_left - data_size_show_MB * MB;
-
-                        data_size_show_KB = data_size_left / KB;
-                        data_size_left = data_size_left - data_size_show_KB * KB;
-
-                        data_size_show_B = data_size_left;
-                    }
-
-                    Console.WriteLine("Progress:{0}|{1}: {2}G {3}M {4}K {5}B", read_cnt, ReturnByte.Length,
-                    data_size_show_GB, data_size_show_MB, data_size_show_KB, data_size_show_B);
-
-                    read_cnt++;               
-                } 
+				fifo_top++;
+				/**********************从文件中读取END***********************/
             }
 
             br.Close();
-			T.Close();
 
 			System.DateTime end_time = new System.DateTime();
 			end_time = System.DateTime.Now;
@@ -244,7 +154,9 @@ namespace KDiskTool
 							"Spend:" + (end_time - start_time).ToString(),
 			"Finish!", MessageBoxButtons.OK);	
 
-            BEThread.Abort("退出");     //结束线程
+			read_is_end = true;
+
+            Thread_Read.Abort("退出");     //结束线程
         }
     }
 

@@ -18,7 +18,13 @@ namespace KDiskTool
     public partial class Form_KDisk : Form
     {
         //常量
-        private const int _VersionGit = 2;
+        private const int _VersionGit = 3;
+
+		string fileName = null; //文件名
+		byte[] manual_data_buffer;	//使用按钮读写时使用的buffer
+		Zgke.DriverLoader T = null;
+
+        long img_total_length;
 
         public Form_KDisk()
         {
@@ -211,20 +217,65 @@ namespace KDiskTool
                 return;
             }
 
-            /**********************创建线程****************************/
-            string strInfo = string.Empty;
-            BEThread = new Thread(new ThreadStart(BEThreadEntry));   //实例化Thread线程对象
+			if(T == null)
+			{
+				MessageBox.Show("File stream error!", "Error!", MessageBoxButtons.OK);
+				return;
+			}
 
-            strInfo = "The managed Thread ID:" + BEThread.ManagedThreadId + "\n";
-            strInfo += "Thread Name:" + BEThread.Name + "\n";
-            strInfo += "Thread State:" + BEThread.ThreadState.ToString() + "\n";
-            strInfo += "Thread Priority:" + BEThread.Priority.ToString() + "\n";
-            strInfo += "Is Backgroud" + BEThread.IsBackground + "\n";
+
+			DialogResult res1 = DialogResult.Cancel;
+				res1 = MessageBox.Show("start copy from [" + textBox_ImgPath.Text +
+				"] to [" + comboBox_Disk.SelectedItem.ToString() + "] ?", "Start Copy?",
+				 MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+			if(res1 == DialogResult.OK)
+			{
+				//确定按钮的方法
+			}
+			else
+			{
+				br.Close();
+				return;//取消按钮的方法
+			}
+
+			DialogResult res2 = DialogResult.Cancel;
+			res2 = MessageBox.Show("Write to the disk without zero data", "Warning!",
+				 MessageBoxButtons.OKCancel, MessageBoxIcon.Question);
+			if(res2 != DialogResult.OK)
+			{
+				return;
+			}
+
+            /**********************创建线程****************************/
+			string strInfo;
+
+            Thread_Read = new Thread(new ThreadStart(Thread_Read_Entry));   //实例化Thread线程对象
+
+			strInfo = string.Empty;
+            strInfo = "The managed Thread ID:" + Thread_Read.ManagedThreadId + "\n";
+            strInfo += "Thread Name:" + Thread_Read.Name + "\n";
+            strInfo += "Thread State:" + Thread_Read.ThreadState.ToString() + "\n";
+            strInfo += "Thread Priority:" + Thread_Read.Priority.ToString() + "\n";
+            strInfo += "Is Backgroud" + Thread_Read.IsBackground + "\n";
             Console.WriteLine(strInfo);
 
-            //BEThread.Abort("退出");     //结束线程
-            BEThread.IsBackground = true;//设置为后台程序，它的主线程结束，它也一起结束                                       
-            BEThread.Start();                                               //启动线程
+            Thread_Read.IsBackground = true;//设置为后台程序，它的主线程结束，它也一起结束                                       
+            Thread_Read.Start();                                            //启动线程
+
+
+			Thread_Write = new Thread(new ThreadStart(Thread_Write_Entry)); //实例化Thread线程对象
+
+			strInfo = string.Empty;
+			strInfo = "The managed Thread ID:" + Thread_Write.ManagedThreadId + "\n";
+			strInfo += "Thread Name:" + Thread_Write.Name + "\n";
+			strInfo += "Thread State:" + Thread_Write.ThreadState.ToString() + "\n";
+			strInfo += "Thread Priority:" + Thread_Write.Priority.ToString() + "\n";
+			strInfo += "Is Backgroud" + Thread_Write.IsBackground + "\n";
+			Console.WriteLine(strInfo);
+
+			Thread_Write.IsBackground = true;//设置为后台程序，它的主线程结束，它也一起结束                                       
+			Thread_Write.Start();                                           //启动线程
+
             /**********************创建线程****************************/
         }
 		public string ShowString(byte[] SectorBytes)
@@ -253,9 +304,6 @@ namespace KDiskTool
 			return ReturnText.ToString();
 		}
 
-		byte[] data_buffer;
-		Zgke.DriverLoader T = null;
-
 		private void button_Read_Click(object sender, EventArgs e)
 		{
 			if(comboBox_Disk.SelectedIndex == -1)
@@ -271,10 +319,10 @@ namespace KDiskTool
 			int lba = Convert.ToInt32(textBox_lba.Text);
 			int length = Convert.ToInt32(textBox_Length.Text);
 
-			data_buffer = T.ReadSector(lba, length);			
+			manual_data_buffer = T.ReadSector(lba, length);			
 			T.Close();
 
-			textBox_Data.Text = T.GetString(data_buffer);
+			textBox_Data.Text = T.GetString(manual_data_buffer);
 		}
 
 		private void button_Write_Click(object sender, EventArgs e)
@@ -285,8 +333,8 @@ namespace KDiskTool
 				return;
 			}
 
-            if( (data_buffer == null) || 
-                (data_buffer.Length != Convert.ToInt32(textBox_PaddingLength.Text.Trim()))
+            if( (manual_data_buffer == null) || 
+                (manual_data_buffer.Length != Convert.ToInt32(textBox_PaddingLength.Text.Trim()))
                )
 			{
 				MessageBox.Show("Please fullfill the data buffer before write", "Warning!");
@@ -300,7 +348,7 @@ namespace KDiskTool
 			int lba = Convert.ToInt32(textBox_lba.Text);
 			int length = Convert.ToInt32(textBox_Length.Text);
 
-			T.WritSector(data_buffer, lba, length);
+			T.WritSector(manual_data_buffer, lba, length);
 			T.Close();
 		}
 
@@ -319,9 +367,9 @@ namespace KDiskTool
 			{
 				SectorBytes[i] = pattern;
 			}
-			data_buffer = SectorBytes;
-			textBox_Data.Text = ShowString(data_buffer);
-			Console.WriteLine("legnth of data buffer pattern:{0}, length:{1}", pattern, data_buffer.Length);
+			manual_data_buffer = SectorBytes;
+			textBox_Data.Text = ShowString(manual_data_buffer);
+			Console.WriteLine("legnth of data buffer pattern:{0}, length:{1}", pattern, manual_data_buffer.Length);
 		}
 
 		private void button_Random_Click(object sender, EventArgs e)
@@ -336,9 +384,9 @@ namespace KDiskTool
 			{
 				SectorBytes[i] = (byte)rd.Next(0, 255);
 			}
-			data_buffer = SectorBytes;
-			textBox_Data.Text = ShowString(data_buffer);
-			Console.WriteLine("legnth of data buffer pattern:{0}, length:{1}", (byte)rd.Next(0, 255), data_buffer.Length);
+			manual_data_buffer = SectorBytes;
+			textBox_Data.Text = ShowString(manual_data_buffer);
+			Console.WriteLine("legnth of data buffer pattern:{0}, length:{1}", (byte)rd.Next(0, 255), manual_data_buffer.Length);
 		}
 
 		private void button_CheckRealSize_Click(object sender, EventArgs e)
@@ -358,8 +406,8 @@ namespace KDiskTool
 			{
 				Console.WriteLine("Check lba:{0}", tmp_max_lba);                
 
-				data_buffer = T.ReadSector(tmp_max_lba, 8);			
-				if(data_buffer == null)
+				manual_data_buffer = T.ReadSector(tmp_max_lba, 8);			
+				if(manual_data_buffer == null)
 				{
 					break;
 				}
@@ -377,9 +425,51 @@ namespace KDiskTool
 
         private void Form_KDisk_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if(BEThread != null)
+            if(Thread_Read != null)
             {
-                BEThread.Abort("退出");     //结束线程
+                Thread_Read.Abort("退出");     //结束线程
+            }
+
+			if(Thread_Write != null)
+            {
+				Thread_Write.Abort("退出");     //结束线程
+            }			
+        }
+
+        long last_loaded_size = 0;
+        float speed_sum = 0;
+        float speed_cnt = 0;
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if(loaded_data_size != last_loaded_size)
+            {
+                /**********************显示进度START*********************/
+                long percent_all = loaded_data_size * 100 / img_total_length;
+                long percent_ignore = ignore_data_size * 100 / img_total_length;
+
+                textBox_Progress.Text = loaded_data_size.ToString() + ":" + img_total_length.ToString() +
+                    "(" + percent_all.ToString() + "%)";
+
+                textBox_Ignore.Text = ignore_data_size.ToString() + ":" + img_total_length.ToString() +
+                    "(" + percent_ignore.ToString() + "%)";
+                /**********************显示进度END***********************/
+
+                /**********************计算速度START*********************/
+                long delta_size;
+                long speed;
+
+                //Console.WriteLine("C:{0} L:{1}", currentTime.Second, last_time);
+                delta_size = loaded_data_size - last_loaded_size;   //Byte/s
+                speed = delta_size / 1024 / 1024;                   //MB/s
+                label_CurrentSpeed.Text = "Current: " + speed.ToString() + "MB/s";
+
+                speed_cnt++;
+                speed_sum += (float)speed;
+                label_AverageSpeed.Text = "Average: " + ((long)(speed_sum / speed_cnt)).ToString() + "MB/s";
+
+                last_loaded_size = loaded_data_size;
+                /**********************计算速度END***********************/           
             }
         }
     }

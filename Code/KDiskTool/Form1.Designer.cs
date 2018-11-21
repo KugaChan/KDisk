@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form_KDisk));
             this.textBox_Data = new System.Windows.Forms.TextBox();
             this.comboBox_Disk = new System.Windows.Forms.ComboBox();
@@ -62,6 +63,7 @@
             this.checkBox_Ignore = new System.Windows.Forms.CheckBox();
             this.label_CurrentSpeed = new System.Windows.Forms.Label();
             this.label_AverageSpeed = new System.Windows.Forms.Label();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.SuspendLayout();
             // 
             // textBox_Data
@@ -370,6 +372,12 @@
             this.label_AverageSpeed.TabIndex = 51;
             this.label_AverageSpeed.Text = "Average:";
             // 
+            // timer1
+            // 
+            this.timer1.Enabled = true;
+            this.timer1.Interval = 1000;
+            this.timer1.Tick += new System.EventHandler(this.timer1_Tick);
+            // 
             // Form_KDisk
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 12F);
@@ -455,6 +463,7 @@
 		private System.Windows.Forms.CheckBox checkBox_Ignore;
         private System.Windows.Forms.Label label_CurrentSpeed;
         private System.Windows.Forms.Label label_AverageSpeed;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 

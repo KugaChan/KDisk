@@ -41,3 +41,12 @@ D:\K\KProjGit\KDisk\Code\KDiskTool\obj\Debug\KDiskTool.Properties.Resources.reso
 D:\K\KProjGit\KDisk\Code\KDiskTool\obj\Debug\KDiskTool.csproj.GenerateResource.Cache
 E:\我的文档\W我的项目\KDisk\Code\KDiskTool\obj\Debug\KDiskTool.Form_KDisk.resources
 D:\K\KProjGit\KDisk\Code\KDiskTool\obj\Debug\KDiskTool.Form_KDisk.resources
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\bin\Debug\KDiskTool.exe.config
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.exe
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.pdb
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.csprojResolveAssemblyReference.cache
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.Form_KDisk.resources
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.Properties.Resources.resources
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\obj\Debug\KDiskTool.csproj.GenerateResource.Cache
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\bin\Debug\KDiskTool.exe
+D:\KProjGit\GitHub\KDisk\Git3\Code\KDiskTool\bin\Debug\KDiskTool.pdb
