@@ -18,7 +18,7 @@ namespace KDiskTool
     public partial class Form_KDisk : Form
     {
         //常量
-        private const int _VersionGit = 3;
+        private const double _VersionGit = 4;
 
 		string fileName = null; //文件名
 		byte[] manual_data_buffer;	//使用按钮读写时使用的buffer
@@ -65,8 +65,9 @@ namespace KDiskTool
 			{
 				foreach(ManagementObject mydisk in mydisks.Get())
 				{
-                    Console.WriteLine("n:{0} s:{1}", mydisk.Properties["Model"].Value.ToString(),
-                        mydisk.Properties["TotalSectors"].Value.ToString());
+                    //这个打印里面有null，可能会报错
+                    //Console.WriteLine("n:{0} s:{1}", mydisk.Properties["Model"].Value.ToString(),
+                    //    mydisk.Properties["TotalSectors"].Value.ToString());
 
                     if(comboBox_Disk.SelectedItem.ToString() == mydisk.Properties["Name"].Value.ToString())
                     {
@@ -75,18 +76,66 @@ namespace KDiskTool
                         textBox_Sector.Text = (size / 512).ToString();
                         textBox_GB.Text = (size / 1024 / 1024 / 1024).ToString();
 
-						textBox_Data.Text += "Caption: " + mydisk.Properties["Caption"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "InterfaceType: " + mydisk.Properties["InterfaceType"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "Model: " + mydisk.Properties["Model"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "DeviceID: " + mydisk.Properties["DeviceID"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "Description: " + mydisk.Properties["Description"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "PNPDeviceID: " + mydisk.Properties["PNPDeviceID"].Value.ToString() + "\r\n";
-						textBox_Data.Text += "Partitions: " + mydisk.Properties["Partitions"].Value.ToString() + "\r\n";
-
-						if(Convert.ToInt64(mydisk.Properties["Partitions"].Value.ToString()) > 0)
-						{
-							disk_has_file_system = true;
-						}
+                        if(mydisk.Properties["Caption"].Value == null)
+                        {
+                            textBox_Data.Text += "Caption: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "Caption: " + mydisk.Properties["Caption"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["InterfaceType"].Value == null)
+                        {
+                            textBox_Data.Text += "InterfaceType: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "InterfaceType: " + mydisk.Properties["InterfaceType"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["Model"].Value == null)
+                        {
+                            textBox_Data.Text += "Model: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "Model: " + mydisk.Properties["Model"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["DeviceID"].Value == null)
+                        {
+                            textBox_Data.Text += "DeviceID: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "DeviceID: " + mydisk.Properties["DeviceID"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["Description"].Value == null)
+                        {
+                            textBox_Data.Text += "Description: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "Description: " + mydisk.Properties["Description"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["PNPDeviceID"].Value == null)
+                        {
+                            textBox_Data.Text += "PNPDeviceID: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "PNPDeviceID: " + mydisk.Properties["PNPDeviceID"].Value.ToString() + "\r\n";
+                        }
+                        if(mydisk.Properties["Partitions"].Value == null)
+                        {
+                            textBox_Data.Text += "Partitions: " + "null" + "\r\n";
+                        }
+                        else
+                        {
+                            textBox_Data.Text += "Partitions: " + mydisk.Properties["Partitions"].Value.ToString() + "\r\n";
+                            if(Convert.ToInt64(mydisk.Properties["Partitions"].Value.ToString()) > 0)
+                            {
+                                disk_has_file_system = true;
+                            }
+                        }
                     }
 				}
 
@@ -312,14 +361,31 @@ namespace KDiskTool
 				return;
 			}
 
-			int max_lba = Convert.ToInt32(textBox_Sector.Text) - 1;
+			uint max_lba = Convert.ToUInt32(textBox_Sector.Text) - 1;
 			
 			T = new Zgke.DriverLoader(comboBox_Disk.SelectedItem.ToString(), max_lba);
 
-			int lba = Convert.ToInt32(textBox_lba.Text);
-			int length = Convert.ToInt32(textBox_Length.Text);
+            uint lba;
+            if(set_lba_hex == false)
+            {
+                lba = Convert.ToUInt32(textBox_lba.Text);
+            }
+            else
+            {
+                lba = Convert.ToUInt32(textBox_lba.Text, 16);
+            }
 
-			manual_data_buffer = T.ReadSector(lba, length);			
+            int length;
+            if(set_len_hex == false)
+            {
+                length = Convert.ToInt32(textBox_Length.Text);
+            }
+            else
+            {
+                length = Convert.ToInt32(textBox_Length.Text, 16);
+            }
+
+            manual_data_buffer = T.ReadSector(lba, length);			
 			T.Close();
 
 			textBox_Data.Text = T.GetString(manual_data_buffer);
@@ -359,9 +425,10 @@ namespace KDiskTool
 
             // 读取文件
             length = Convert.ToInt32(textBox_PaddingLength.Text.Trim());
-            pattern = Convert.ToByte(textBox_PaddingPattern.Text.Trim());
+            //pattern = Convert.ToByte(textBox_PaddingPattern.Text.Trim());
+            pattern = (byte)padding_value;
 
-			byte[] SectorBytes = new byte[length];
+            byte[] SectorBytes = new byte[length];
 
 			for(int i = 0; i < length; i++)
 			{
@@ -469,7 +536,59 @@ namespace KDiskTool
                 label_AverageSpeed.Text = "Average: " + ((long)(speed_sum / speed_cnt)).ToString() + "MB/s";
 
                 last_loaded_size = loaded_data_size;
-                /**********************计算速度END***********************/           
+
+                label_RdImgBlk.Text = "Rd img Blk:" + rd_img_block_cnt.ToString();
+                label_WrDiskBlk.Text = "Wr disk Blk:" + wr_disk_block_cnt.ToString();
+                /**********************计算速度END***********************/
+            }
+        }
+
+        int padding_value = 0x00;
+        private void textBox_PaddingPattern_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                padding_value = Convert.ToInt32(textBox_PaddingPattern.Text, 16);
+            }
+            catch
+            {
+                padding_value = 0x00;
+            }
+
+            if(padding_value > 0xFF)
+            {
+                padding_value = padding_value & 0x000000FF;
+                textBox_PaddingPattern.Text = Convert.ToString(padding_value, 16);
+            }
+        }
+
+        bool set_lba_hex = true;
+        private void label_SetLBA_Click(object sender, EventArgs e)
+        {
+            if(set_lba_hex == false)
+            {
+                set_lba_hex = true;
+                label_SetLBA.Text = "LBA(hex):";
+            }
+            else
+            {
+                set_lba_hex = false;
+                label_SetLBA.Text = "LBA(dec):";
+            }
+        }
+
+        bool set_len_hex = false;
+        private void label_SectorCount_Click(object sender, EventArgs e)
+        {
+            if(set_len_hex == false)
+            {
+                set_len_hex = true;
+                label_SectorCount.Text = "Len(hex):";
+            }
+            else
+            {
+                set_len_hex = false;
+                label_SectorCount.Text = "Len(dec):";
             }
         }
     }

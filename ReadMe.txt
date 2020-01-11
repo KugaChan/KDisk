@@ -1,5 +1,10 @@
 https://github.com/KugaChan/KDisk.git
 
+Git4
+1. 使用指针判断buffer是否为全0，提高拷贝速度
+2. 加入读pending指示和写pending指示
+3. 默认按照管理员权限运行
+
 Git3
 1. 读写分开2个线程，提高性能
 2. 使用1s定时器统计进度与速度

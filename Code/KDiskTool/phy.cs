@@ -30,7 +30,32 @@ namespace KDiskTool
         long ignore_data_size;
 		long loaded_data_size;
 
-		public void Thread_Write_Entry()
+        long rd_img_block_cnt;
+        long wr_disk_block_cnt;
+
+        unsafe bool Func_Buffer_Is_All_Zero(byte *bp, int length)
+        {
+            if(length % 4 != 0)
+            {
+                MessageBox.Show("Write size error:{0}" + length.ToString(),
+                    "Warning!", MessageBoxButtons.OK);
+
+                return false;
+            }
+
+            uint* dwp = (uint*)bp;
+            for(int v = 0; v < length / 4; v++)
+            {
+                if(dwp[v] != 0)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        unsafe public void Thread_Write_Entry()
 		{
             ignore_data_size = 0;
             long written_data_size = 0;
@@ -44,51 +69,63 @@ namespace KDiskTool
 
 			while(true)
 			{
-				if(fifo_top > fifo_bottom)
-				{
+                if(fifo_top > fifo_bottom)
+                {
                     fifo_bottom_cnt = fifo_bottom % fifo_max;
 
-					long delta_size = loaded_data_size - written_data_size;
-					if(delta_size > dma_buffer_length)	//限定一次只能写入的数据量
-					{
-						delta_size = dma_buffer_length;
-					}
+                    long delta_size = loaded_data_size - written_data_size;
+                    if(delta_size > dma_buffer_length)  //限定一次只能写入的数据量
+                    {
+                        delta_size = dma_buffer_length;
+                    }
 
-					long written_lba = written_data_size / 512;
-					written_data_size += delta_size;
-					int sector_count = (int)(delta_size) / 512;
-					//Console.WriteLine("LBA:{0} Cnt:{1}", written_lba, sector_count);
+                    long written_lba = written_data_size / 512;
+                    written_data_size += delta_size;
+                    int sector_count = (int)(delta_size) / 512;
+                    //Console.WriteLine("LBA:{0} Cnt:{1}", written_lba, sector_count);
 
-					/**********************计算是否写入START*********************/
+                    /**********************计算是否写入START*********************/
                     bool need_write_disk = false;
-					if(always_write_to_disk == true)
-					{
-						need_write_disk = true;
-					}
-					else
-					{
+                    if(always_write_to_disk == true)
+                    {
+                        need_write_disk = true;
+                    }
+                    else
+                    {
+#if true
+                        fixed(byte *p = &fifo_buffer[fifo_bottom_cnt][0])
+                        {
+                            need_write_disk = !Func_Buffer_Is_All_Zero(p, fifo_buffer[fifo_bottom_cnt].Length);
+                        }
+                        
+#else
                         for(int v = 0; v < fifo_buffer[fifo_bottom_cnt].Length; v++)
-						{
+                        {
                             if(fifo_buffer[fifo_bottom_cnt][v] != 0)
-							{
-								need_write_disk = true;
-								break;
-							}
-						}
-					}
+                            {
+                                need_write_disk = true;
+                                break;
+                            }
+                        }
+#endif
+                    }
 
-					if(need_write_disk == true)
-					{
+                    if(need_write_disk == true)
+                    {
                         T.WritSector(fifo_buffer[fifo_bottom_cnt], written_lba, sector_count);//把数据写到disk上
-					}
-					else
-					{
+                    }
+                    else
+                    {
                         ignore_data_size += fifo_buffer[fifo_bottom_cnt].Length;
-					}
+                    }
 
-					fifo_bottom++;
-					/**********************计算是否写入END***********************/
-				}
+                    fifo_bottom++;
+                    /**********************计算是否写入END***********************/
+                }
+                else
+                {
+                    rd_img_block_cnt++;
+                }
 
 				if(read_is_end == true)
 				{
@@ -98,6 +135,10 @@ namespace KDiskTool
 
             timer1.Enabled = false;
             last_loaded_size = 0;
+
+            rd_img_block_cnt = 0;
+            wr_disk_block_cnt = 0;
+
             speed_sum = 0;
             speed_cnt = 0;
 
@@ -106,7 +147,7 @@ namespace KDiskTool
 			Thread_Write.Abort("退出");
 		}
 
-        public void Thread_Read_Entry()                                         //线程入口
+        public void Thread_Read_Entry()                                     //线程入口
         {
             loaded_data_size = 0;            
 
@@ -121,8 +162,9 @@ namespace KDiskTool
             {
 				if(fifo_top - fifo_bottom >= fifo_max)
 				{
-					//Console.WriteLine("FIFO is full {0}:{1}", fifo_top, fifo_bottom);
-					continue;
+                    wr_disk_block_cnt++;
+                    //Console.WriteLine("FIFO is full {0}:{1}", fifo_top, fifo_bottom);
+                    continue;
 				}
 				/**********************从文件中读取START*********************/
                 fifo_top_cnt = fifo_top % fifo_max;
